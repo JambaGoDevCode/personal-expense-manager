@@ -1,68 +1,66 @@
-import { createContext, ReactNode, useContext, useEffect, useState } from 'react';
-import { api } from '../services/api';
-
+import {
+  createContext,
+  ReactNode,
+  useContext,
+  useEffect,
+  useState,
+} from "react";
+import { api } from "../services/api";
 
 // Criando contexto que poderá acessar e
 //facilitar a comunicação entre os componentes
 
- const TransactionContext = createContext<TransationDataContext>(
-    {} as TransationDataContext
-    );
-
+const TransactionContext = createContext<TransationDataContext>(
+  {} as TransationDataContext
+);
 
 interface TransactionType {
-    id: number;
-    title: string;
-    amount: number;
-    type: string;
-    category: string;
-    createdAt: string;
+  id: number;
+  title: string;
+  amount: number;
+  type: string;
+  category: string;
+  createdAt: string;
 }
 
-type TransactionInput = Omit<TransactionType, 'id' | 'createdAt'>;
+type TransactionInput = Omit<TransactionType, "id" | "createdAt">;
 
-interface TransationDataContext{
-    transactions: TransactionType[];
-    createTransaction: (transactions: TransactionInput) => Promise<void>;
+interface TransationDataContext {
+  transactions: TransactionType[];
+  createTransaction: (transactions: TransactionInput) => Promise<void>;
 }
 
 interface TransactionsProviderProps {
-    children: ReactNode;
+  children: ReactNode;
 }
 
+export function TransactionsProvider({ children }: TransactionsProviderProps) {
+  const [transactions, setTransactions] = useState<TransactionType[]>([]);
 
-export function TransactionsProvider( {children}: TransactionsProviderProps){
-    const [transactions, setTransactions] = useState<TransactionType[]>([]);
+  useEffect(() => {
+    api
+      .get("/transactions")
+      .then((response) => setTransactions(response.data.transactions));
+  }, []);
 
-    useEffect(() =>{
-        api.get('/transactions')
-        .then(response=> setTransactions(response.data.transactions))
-    }, []);
+  async function createTransaction(transactionInput: TransactionInput) {
+    const response = await api.post("/transactions", {
+      ...transactionInput,
+      createdAt: new Date(),
+    });
 
-
-    async function createTransaction(transactionInput: TransactionInput){
-       const response = await api.post('/transactions', {
-           ...transactionInput,
-           createdAt: new Date(),
-       })
-       const { transactions } = response.data
-       setTransactions({
-           ...transactions,
-           transactions,
-       }) 
-    }
-    return(
-        <TransactionContext.Provider value={{transactions, createTransaction}}>
-            {children}
-        </TransactionContext.Provider>
-    )
+    const { transaction } = response.data;
+    setTransactions((oldTransactions) => [...oldTransactions, transaction]);
+  }
+  return (
+    <TransactionContext.Provider value={{ transactions, createTransaction }}>
+      {children}
+    </TransactionContext.Provider>
+  );
 }
 
+export function useTransactions() {
+  const context = useContext(TransactionContext);
 
-
-
-export function useTransactions(){
-    const context = useContext(TransactionContext);
-
-    return context
+  return context;
 }
